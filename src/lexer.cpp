@@ -1,23 +1,44 @@
-/*
-<program> ::= <fact> <program> | <rule> <program> | ɛ
-<fact> ::=  <relation> "(" <constant-list> ")." 
-<rule> ::= <atom> ":-" <atom-list> "."
-<atom> ::= <relation> "(" <term-list> ")"
-<atom-list> ::= <atom> | <atom> "," <atom-list>
-<term> ::= <constant> | <variable>
-<term-list> ::= <term> | <term> "," <term-list>
-<constant-list> ::= <constant> | <constant> "," <constant-list>
-*/
-#include "datalog.hh"
+
+#include "lexer.hh"
 
 #include <fstream>
 #include <ostream>
 #include <iostream>
 
+std::string FilePos::to_string(void) {
+	return "[" + std::to_string(line) + ":" 
+			+ std::to_string(col) + " (" 
+			+ std::to_string(offset) + "]";
+}
+
+std::ostream& operator<<(std::ostream &stream, const FilePos &fpos) {
+	stream << "[" << fpos.line << ":" << fpos.col << "]";
+	return stream;
+}
+
 Token::Token(TokenType tt, std::string &lexeme, FilePos &pos) :
 		type(tt), lexeme(lexeme), file_pos(pos) {
 	;
 		}
+
+std::ostream& operator<<(std::ostream &stream, const Token &tok) {
+	std::string ttype = "";
+	ttype = static_cast<char>(tok.type);
+	if(tok.type == TokenType::LITERAL) {
+		ttype = "LITERAL";
+	}
+	stream 	<< tok.file_pos << " Token(" << ttype << "," 
+			<< "\"" << tok.lexeme << "\")";
+	return stream;
+}
+
+TokenType Token::get_type(void) {
+	return this->type;
+}
+
+std::string Token::get_lexeme(void) {
+	return this->lexeme;
+}
 
 Lexer::Lexer(std::string &ifile) :
 	istream(ifile), 
@@ -87,6 +108,10 @@ std::vector<Token> Lexer::run(void) {
 		}
 		}
 	}
+	FilePos endPos(line, column, istream.tellg());
+	std::string lexeme("");
+	Token eof(TokenType::END_OF_FILE, lexeme, endPos);
+	tokens.push_back(eof);
 	if(state == State::ERROR) {
 		std::cerr 	<< "Lexing terminated with error\n";
 	} else {
@@ -96,7 +121,7 @@ std::vector<Token> Lexer::run(void) {
 	return tokens;
 }
 
-void Lexer::print_tokens(std::ostream &stream) {
+void print_tokens(std::ostream &stream, std::vector<Token> tokens) {
 	for(auto token : tokens) {
 		stream << token << "\n";
 	}
