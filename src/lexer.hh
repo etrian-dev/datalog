@@ -14,7 +14,7 @@ public:
 	FilePos(const size_t &line, const size_t &column, const std::streamoff &offset) :
 		line(line), col(column), offset(offset) {}
 	friend std::ostream& operator<<(std::ostream &stream, const FilePos &fpos);
-	std::string to_string(void);
+	std::string to_string(void) const;
 };
 
 enum State
@@ -23,6 +23,7 @@ enum State
 	ERROR
 };
 
+// TODO: implement comment tokens (and discard them)
 enum TokenType
 {
 	END_OF_FILE,
@@ -41,10 +42,12 @@ private:
 	std::string lexeme;
 	FilePos file_pos;
 public:
-	Token(TokenType tt, std::string &lexeme, FilePos &pos);
+	Token(const TokenType tt, const std::string &lexeme, const FilePos &pos);
 	friend std::ostream& operator<<(std::ostream &stream, const Token &tok);
-	TokenType get_type(void);
-	std::string get_lexeme(void);
+	TokenType get_type(void) const;
+	std::string get_lexeme(void) const;
+	FilePos get_pos(void) const;
+	std::string to_string(void) const;
 };
 
 class Lexer {
