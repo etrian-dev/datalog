@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <ostream>
+#include <sstream>
 
 std::string FilePos::to_string(void) const {
   return "[" + std::to_string(line) + ":" + std::to_string(col) + " (" +
@@ -75,14 +76,25 @@ State add_literal(std::vector<Token> &tokens, std::string &lexeme,
   return State::GOOD;
 }
 
+std::vector<Token> Lexer::run(std::string &query) {
+  std::istringstream stream(query);
+  return runLexer(stream);
+}
+
 std::vector<Token> Lexer::run(void) {
+  this->tokens = runLexer(istream);
+  return tokens;
+}
+
+std::vector<Token> Lexer::runLexer(std::istream &stream) {
+  std::vector<Token> lexer_tokens;
   char c;
   size_t line = 1;
   size_t column = 0;
   std::string buffer("");
-  while (istream.good()) {
-    FilePos fpos(line, column, istream.tellg());
-    istream.get(c);
+  while (stream.good()) {
+    FilePos fpos(line, column, stream.tellg());
+    stream.get(c);
     switch (c) {
     case TokenType::LPAREN:
     case TokenType::RPAREN:
@@ -90,25 +102,25 @@ std::vector<Token> Lexer::run(void) {
     case TokenType::COMMA:
     case TokenType::MINUS:
     case TokenType::COLON: {
-      if (add_literal(tokens, buffer, fpos) == State::ERROR) {
-        std::cerr << "[" << line << ":" << istream.tellg()
+      if (add_literal(lexer_tokens, buffer, fpos) == State::ERROR) {
+        std::cerr << "[" << line << ":" << stream.tellg()
                   << "] Expected literal, found \"\"\n";
       }
       buffer = "";
       Token tok(static_cast<TokenType>(c), buffer, fpos);
-      tokens.push_back(tok);
+      lexer_tokens.push_back(tok);
       ++column;
       break;
     }
     case '\n': {
-      add_literal(tokens, buffer, fpos);
+      add_literal(lexer_tokens, buffer, fpos);
       ++line;
       column = 0;
       break;
     }
     case ' ':
     case '\r': {
-      add_literal(tokens, buffer, fpos);
+      add_literal(lexer_tokens, buffer, fpos);
       ++column;
       break;
     }
@@ -119,17 +131,17 @@ std::vector<Token> Lexer::run(void) {
     }
     }
   }
-  FilePos endPos(line, column, istream.tellg());
+  FilePos endPos(line, column, stream.tellg());
   std::string lexeme("");
   Token eof(TokenType::END_OF_FILE, lexeme, endPos);
-  tokens.push_back(eof);
+  lexer_tokens.push_back(eof);
   if (state == State::ERROR) {
     std::cerr << "Lexing terminated with error\n";
   } else {
-    std::cout << "Lexing terminated successfully (" << tokens.size()
+    std::cout << "Lexing terminated successfully (" << lexer_tokens.size()
               << " tokens read)\n";
   }
-  return tokens;
+  return lexer_tokens;
 }
 
 void print_tokens(std::ostream &stream, std::vector<Token> tokens) {

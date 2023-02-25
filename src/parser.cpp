@@ -33,8 +33,7 @@ const char *ParseError::what(void) {
 <term-list> ::= <term> | <term> "," <term-list>
 <constant-list> ::= <constant> | <constant> "," <constant-list>
 */
-
-std::string AstPrinter::visit(Term &term) {
+template <> std::string AstPrinter::visit(Term &term) {
   std::string term_type("const");
   if (term.get_term_type() == TermType::VARIABLE) {
     term_type = "var";
@@ -42,7 +41,7 @@ std::string AstPrinter::visit(Term &term) {
   return term.get_name() + ":" + term_type;
 }
 
-std::string AstPrinter::visit(Atom &atom) {
+template <> std::string AstPrinter::visit(Atom &atom) {
   std::string s = atom.get_predicate() + "(";
   std::vector<Term> terms = atom.get_terms();
   for (size_t i = 0; i < terms.size() - 1; ++i) {
@@ -51,7 +50,7 @@ std::string AstPrinter::visit(Atom &atom) {
   return s + terms[terms.size() - 1].accept(*this) + ")";
 }
 
-std::string AstPrinter::visit(Rule &rule) {
+template <> std::string AstPrinter::visit(Rule &rule) {
   Atom head = rule.get_head();
   std::string s = head.accept(*this);
   std::vector<Atom> goals = rule.get_goals();
@@ -66,7 +65,7 @@ std::string AstPrinter::visit(Rule &rule) {
   return s + "\t" + goals[goals.size() - 1].accept(*this) + ".\n";
 }
 
-std::string AstPrinter::visit(Program &program) {
+template <> std::string AstPrinter::visit(Program &program) {
   std::string s;
   std::vector<Rule> facts_rules = program.get_rules();
   for (size_t i = 0; i < facts_rules.size(); ++i) {
@@ -76,6 +75,10 @@ std::string AstPrinter::visit(Program &program) {
 }
 
 Term::Term(std::string &name, TermType type) : name(name), term_type(type) {}
+Term::Term(Term *other) {
+  name = other->get_name();
+  term_type = other->get_term_type();
+}
 
 std::string Term::get_name(void) { return std::string(name); }
 TermType Term::get_term_type(void) { return term_type; }
@@ -122,8 +125,23 @@ Token &Parser::previous(void) {
   return tokens[current - 1UL];
 }
 
+void Parser::reset(std::vector<Token> &tokens, size_t pos) {
+  this->tokens = tokens;
+  this->current = pos;
+}
+
 bool Parser::is_eof(Token &tok) {
   return tok.get_type() == TokenType::END_OF_FILE;
+}
+
+Program Parser::parse(std::vector<Token> &tokens) {
+  try {
+    reset(tokens, 0);
+    return parse_program();
+  } catch (ParseError &error) {
+    std::cout /*<< "\033[31m"*/ << error.what() /*<< "\033[0m"*/ << std::endl;
+  }
+  return Program();
 }
 
 Program Parser::parse(void) {
@@ -141,6 +159,7 @@ Program Parser::parse_program(void) {
   while (!is_eof(peek())) {
     Rule rule = parse_rule();
     rules.push_back(rule);
+    advance();
   }
   prog = Program(rules);
   return prog;

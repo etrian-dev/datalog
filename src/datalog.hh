@@ -1,7 +1,8 @@
 #ifndef DATALOG_HH_INCLUDED
 #define DATALOG_HH_INCLUDED
 
-#include "parser.hh"
+#include "interpreter.hh"
 #include "lexer.hh"
+#include "parser.hh"
 
 #endif

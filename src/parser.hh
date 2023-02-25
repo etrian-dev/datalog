@@ -1,6 +1,7 @@
 #ifndef PARSER_HH_INCLUDED
 #define PARSER_HH_INCLUDED
 
+#include "ast.hh"
 #include "lexer.hh"
 
 #include <stdexcept>
@@ -31,23 +32,9 @@ public:
 
 enum class TermType { CONSTANT, VARIABLE };
 
-class Program;
-class Rule;
-class Atom;
-class Term;
-
-class AstPrinter {
-public:
-  std::string visit(Program &program);
-  std::string visit(Rule &rule);
-  std::string visit(Atom &atom);
-  std::string visit(Term &term);
-};
-
 // ABC for AST grammar nodes
 class AstNode {
-  // template <class T>
-  virtual std::string accept(AstPrinter &visitor) = 0;
+  template <class T> T accept(AstVisitor<T> &visitor);
 };
 
 class Term : AstNode {
@@ -57,10 +44,13 @@ private:
 
 public:
   Term(std::string &name, TermType type);
+  Term(Term *term);
   std::string get_name(void);
   TermType get_term_type(void);
 
-  std::string accept(AstPrinter &visitor) { return visitor.visit(*this); }
+  template <class T> T accept(AstVisitor<T> &visitor) {
+    return visitor.visit(*this);
+  }
 };
 
 class Atom : AstNode {
@@ -74,8 +64,9 @@ public:
   std::string get_predicate(void);
   std::vector<Term> get_terms(void);
 
-  // template <class T>
-  std::string accept(AstPrinter &visitor) { return visitor.visit(*this); }
+  template <class T> T accept(AstVisitor<T> &visitor) {
+    return visitor.visit(*this);
+  }
 };
 
 class Rule {
@@ -89,8 +80,9 @@ public:
   Atom get_head(void);
   std::vector<Atom> get_goals(void);
 
-  // template <class T>
-  std::string accept(AstPrinter &visitor) { return visitor.visit(*this); }
+  template <class T> T accept(AstVisitor<T> &visitor) {
+    return visitor.visit(*this);
+  }
 };
 
 class Program : AstNode {
@@ -102,8 +94,9 @@ public:
   Program(std::vector<Rule> &rules);
   std::vector<Rule> get_rules(void);
 
-  // template <class T>
-  std::string accept(AstPrinter &visitor) { return visitor.visit(*this); }
+  template <class T> T accept(AstVisitor<T> &visitor) {
+    return visitor.visit(*this);
+  }
 };
 
 class Parser {
@@ -121,30 +114,15 @@ private:
   Token &advance(void);
   Token &previous(void);
   bool is_eof(Token &tok);
+  void reset(std::vector<Token> &tokens, size_t pos);
 
 public:
   Parser(std::vector<Token> &token_list);
   ~Parser();
   Program parse(void);
+  Program parse(std::vector<Token> &tokens);
 };
 
 void print_ast(std::ostream &stream, Program &ast);
-
-/*template <typename T>
-class AstVisitor<T> {
-        T visitProgram(const &Program) = 0;
-        T visitFact(const &Fact) = 0;
-        T visitRule(const &Program) = 0;
-        T visitAtom(const &Atom) = 0;
-        T visitTerm(const &Term) = 0;
-};
-
-class AstPrinter : AstVisitor<std::string> {
-        std::string visitProgram(const Program &program);
-        std::string visitFact(const Fact &fact);
-        std::string visitRule(const Rule &rule);
-        std::string visitAtom(const Atom &atom);
-        std::string visitTerm(const Term &term);
-};*/
 
 #endif

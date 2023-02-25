@@ -1,5 +1,5 @@
 project('datalog', 'cpp')
-datalogpp = library('datalogpp', 'src/lexer.cpp', 'src/parser.cpp')
+datalogpp = library('datalogpp', 'src/lexer.cpp', 'src/parser.cpp', 'src/interpreter.cpp')
 datalogsh = executable('datalogsh', 'src/main.cpp', link_with: datalogpp)
 
 test_files = files('kb.pl')
