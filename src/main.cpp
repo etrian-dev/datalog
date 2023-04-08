@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
   std::cout << "? ";
   Interpreter interpreter;
   while (std::cin.good()) {
-    std::cin >> buf;
+    std::getline(std::cin, buf, '\n');
     std::vector<Token> query_tokens = lexer.run(buf);
     print_tokens(std::cout, query_tokens);
     Program query = parser.parse(query_tokens);
