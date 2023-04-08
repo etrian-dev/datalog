@@ -7,21 +7,18 @@
 #include <vector>
 
 ParseError::ParseError(const std::string &cause, const Token &current)
-    : std::runtime_error(cause), cause(cause), token(current)
-{
+    : std::runtime_error(cause), cause(cause), token(current) {
   std::cout << current.get_pos().to_string() << cause << "\t"
             << current.to_string() << "\n";
 }
 
 ParseError::ParseError(const std::string &cause)
     : std::runtime_error(cause), cause(cause),
-      token(TokenType::END_OF_FILE, "", FilePos(0, 0, 0))
-{
+      token(TokenType::END_OF_FILE, "", FilePos(0, 0, 0)) {
   std::cout << cause << "\n";
 }
 
-const char *ParseError::what(void)
-{
+const char *ParseError::what(void) {
   std::string text =
       token.get_pos().to_string() + cause + "\ttok = " + token.to_string();
   return text.c_str();
@@ -36,63 +33,49 @@ const char *ParseError::what(void)
 <term-list> ::= <term> | <term> "," <term-list>
 <constant-list> ::= <constant> | <constant> "," <constant-list>
 */
-template <>
-std::string AstPrinter::visit(Term &term)
-{
+template <> std::string AstPrinter::visit(Term &term) {
   std::string term_type("const");
-  if (term.get_term_type() == TermType::VARIABLE)
-  {
+  if (term.get_term_type() == TermType::VARIABLE) {
     term_type = "var";
   }
   return term.get_name() + ":" + term_type;
 }
 
-template <>
-std::string AstPrinter::visit(Atom &atom)
-{
+template <> std::string AstPrinter::visit(Atom &atom) {
   std::string s = atom.get_predicate() + "(";
   std::vector<Term> terms = atom.get_terms();
-  for (size_t i = 0; i < terms.size() - 1; ++i)
-  {
+  for (size_t i = 0; i < terms.size() - 1; ++i) {
     s += terms[i].accept(*this) + ", ";
   }
   return s + terms[terms.size() - 1].accept(*this) + ")";
 }
 
-template <>
-std::string AstPrinter::visit(Rule &rule)
-{
+template <> std::string AstPrinter::visit(Rule &rule) {
   Atom head = rule.get_head();
   std::string s = head.accept(*this);
   std::vector<Atom> goals = rule.get_goals();
-  if (goals.size() == 0)
-  {
+  if (goals.size() == 0) {
     return s + "\n";
   }
   s += ":-\n";
   size_t i = 0;
-  for (; i < goals.size(); ++i)
-  {
+  for (; i < goals.size(); ++i) {
     s += "\t" + goals[i].accept(*this) + ",\n";
   }
   return s + "\t" + goals[goals.size() - 1].accept(*this) + ".\n";
 }
 
-template <>
-std::string AstPrinter::visit(Program &program)
-{
+template <> std::string AstPrinter::visit(Program &program) {
   std::string s;
   std::vector<Rule> facts_rules = program.get_rules();
-  for (size_t i = 0; i < facts_rules.size(); ++i)
-  {
+  for (size_t i = 0; i < facts_rules.size(); ++i) {
     s += facts_rules[i].accept(*this);
   }
   return s;
 }
 
 Term::Term(std::string &name, TermType type) : name(name), term_type(type) {}
-Term::Term(Term *other)
-{
+Term::Term(Term *other) {
   name = other->get_name();
   term_type = other->get_term_type();
 }
@@ -112,8 +95,7 @@ Rule::Rule(Atom &head, std::vector<Atom> &goals) : head(head), goals(goals) {}
 
 Rule::Rule(Atom &head) : head(head), goals(std::vector<Atom>()) {}
 
-Atom Rule::get_head(void)
-{
+Atom Rule::get_head(void) {
   std::string pred = head.get_predicate();
   std::vector<Term> terms = head.get_terms();
   return Atom(pred, terms);
@@ -126,8 +108,7 @@ Program::Program(void) { rules = std::vector<Rule>(); }
 
 std::vector<Rule> Program::get_rules(void) { return std::vector<Rule>(rules); }
 
-Parser::Parser(std::vector<Token> &token_list) : current(0)
-{
+Parser::Parser(std::vector<Token> &token_list) : current(0) {
   tokens = token_list;
 }
 
@@ -137,59 +118,45 @@ Token &Parser::peek(void) { return tokens[current]; }
 
 Token &Parser::advance(void) { return tokens[current++]; }
 
-Token &Parser::previous(void)
-{
-  if (current == 0UL)
-  {
+Token &Parser::previous(void) {
+  if (current == 0UL) {
     throw ParseError("Cannot roll back the start of the token sequence");
   }
   return tokens[current - 1UL];
 }
 
-void Parser::reset(std::vector<Token> &tokens, size_t pos)
-{
+void Parser::reset(std::vector<Token> &tokens, size_t pos) {
   this->tokens = tokens;
   this->current = pos;
 }
 
-bool Parser::is_eof(Token &tok)
-{
+bool Parser::is_eof(Token &tok) {
   return tok.get_type() == TokenType::END_OF_FILE;
 }
 
-Program Parser::parse(std::vector<Token> &tokens)
-{
-  try
-  {
+Program Parser::parse(std::vector<Token> &tokens) {
+  try {
     reset(tokens, 0);
     return parse_program();
-  }
-  catch (ParseError &error)
-  {
+  } catch (ParseError &error) {
     std::cout /*<< "\033[31m"*/ << error.what() /*<< "\033[0m"*/ << std::endl;
   }
   return Program();
 }
 
-Program Parser::parse(void)
-{
-  try
-  {
+Program Parser::parse(void) {
+  try {
     return parse_program();
-  }
-  catch (ParseError &error)
-  {
+  } catch (ParseError &error) {
     std::cout /*<< "\033[31m"*/ << error.what() /*<< "\033[0m"*/ << std::endl;
   }
   return Program();
 }
 
-Program Parser::parse_program(void)
-{
+Program Parser::parse_program(void) {
   Program prog; // the empty program
   std::vector<Rule> rules;
-  while (!is_eof(peek()))
-  {
+  while (!is_eof(peek())) {
     Rule rule = parse_rule();
     // at the start of the new rule's token or EOF
     rules.push_back(rule);
@@ -198,92 +165,72 @@ Program Parser::parse_program(void)
   return prog;
 }
 
-Rule Parser::parse_rule(void)
-{
+Rule Parser::parse_rule(void) {
   Atom head = parse_atom();
   // either at "." or at ":-"
   Token next = advance();
-  if (next.get_type() == TokenType::DOT)
-  {
+  if (next.get_type() == TokenType::DOT) {
     // then we're parsing a fact => we are done
     std::vector<Term> terms = head.get_terms();
     return Rule(head);
-  }
-  else if (next.get_type() == TokenType::COLON && peek().get_type() == TokenType::MINUS)
-  {
+  } else if (next.get_type() == TokenType::COLON &&
+             peek().get_type() == TokenType::MINUS) {
     // then we're parsing a rule: more atoms to follow
     std::vector<Atom> goals;
     advance(); // skip the "-" or the ","
-    do
-    {
+    do {
       Atom goal = parse_atom();
       goals.push_back(goal);
       next = advance();
     } while (next.get_type() == TokenType::COMMA);
-    if (next.get_type() == TokenType::DOT)
-    {
+    if (next.get_type() == TokenType::DOT) {
       return Rule(head, goals);
-    }
-    else
-    {
+    } else {
       throw ParseError("Expected dot at ", next);
     }
   }
   throw ParseError("Expected dot or :- at ", next);
 }
 
-Atom Parser::parse_atom(void)
-{
+Atom Parser::parse_atom(void) {
   Token relation = advance();
-  if (relation.get_type() == TokenType::LITERAL)
-  {
+  if (relation.get_type() == TokenType::LITERAL) {
     std::string lexeme = relation.get_lexeme();
     Token next = advance(); // skip and save the lparen
-    if (next.get_type() == TokenType::LPAREN)
-    {
+    if (next.get_type() == TokenType::LPAREN) {
       // parsing a term list
       Term term = parse_term();
       std::vector<Term> terms{term};
       next = advance(); // skip and save the rparen or comma
-      while (next.get_type() == TokenType::COMMA)
-      {
+      while (next.get_type() == TokenType::COMMA) {
         Term term = parse_term();
         terms.push_back(term);
         next = advance();
       }
-      if (next.get_type() == TokenType::RPAREN)
-      {
+      if (next.get_type() == TokenType::RPAREN) {
         return Atom(lexeme, terms);
-      }
-      else
-      {
+      } else {
         throw ParseError("Expected ) at ", next);
       }
-    }
-    else
-    {
+    } else {
       throw ParseError("Expected a term list or a dot at ", previous());
     }
   }
   throw ParseError("Expected a predicate at ", relation);
 }
 
-bool is_var(std::string &lexeme)
-{
+bool is_var(std::string &lexeme) {
   return (!lexeme.empty() &&
           (lexeme[0] == '_' || (lexeme[0] >= 'A' && lexeme[0] <= 'Z')));
 }
 
-Term Parser::parse_term(void)
-{
+Term Parser::parse_term(void) {
   Token tok = advance();
-  if (tok.get_type() == TokenType::LITERAL)
-  {
+  if (tok.get_type() == TokenType::LITERAL) {
     std::string lexeme = tok.get_lexeme();
     // FIXME: we actually need to check if it's valid identifier,
     // unless we do that at the lexer level
-    if (is_var(lexeme))
-    {
+    if (is_var(lexeme)) {
       // then it's a variable
       return Term(lexeme, TermType::VARIABLE);
     }
@@ -292,8 +239,7 @@ Term Parser::parse_term(void)
   throw ParseError("Expected a variable or constant at ", previous());
 }
 
-void print_ast(std::ostream &stream, Program &ast)
-{
+void print_ast(std::ostream &stream, Program &ast) {
   AstPrinter visitor;
   stream << visitor.visit(ast);
 }

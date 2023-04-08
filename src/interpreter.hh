@@ -15,7 +15,19 @@ public:
   EvaluatedTerm(Term &inner);
   bool set_binding(Term *t);
   void reset_binding(void);
-  Term get_bound(void);
+  Term *get_bound(void);
+  bool is_bound(void);
+};
+
+class EvaluatedAtom {
+private:
+  std::vector<EvaluatedTerm> terms;
+
+public:
+  EvaluatedAtom(std::vector<EvaluatedTerm> &terms);
+  EvaluatedAtom(void);
+  bool is_ground(void);
+  void add_term(EvaluatedTerm &t);
 };
 
 class Interpreter {
