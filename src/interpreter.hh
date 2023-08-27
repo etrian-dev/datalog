@@ -17,17 +17,23 @@ public:
   void reset_binding(void);
   Term *get_bound(void);
   bool is_bound(void);
+  bool operator==(EvaluatedTerm &other);
 };
 
 class EvaluatedAtom {
 private:
+  const std::string_view predicate;
   std::vector<EvaluatedTerm> terms;
 
 public:
-  EvaluatedAtom(std::vector<EvaluatedTerm> &terms);
+  EvaluatedAtom(std::string &pred, std::vector<EvaluatedTerm> &terms);
+  EvaluatedAtom(Atom &atom);
   EvaluatedAtom(void);
   bool is_ground(void);
   void add_term(EvaluatedTerm &t);
+  void remove_term(EvaluatedTerm &t);
+  std::vector<EvaluatedTerm> &get_eterms(void);
+  constexpr std::string_view get_predicate(void);
 };
 
 class Interpreter {

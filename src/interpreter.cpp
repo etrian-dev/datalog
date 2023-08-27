@@ -2,6 +2,8 @@
 #include "ast.hh"
 #include "parser.hh"
 
+#include <algorithm>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -24,12 +26,54 @@ Term *EvaluatedTerm::get_bound(void) {
   throw std::runtime_error("No value is bound!");
 }
 
-bool EvaluatedTerm::is_bound(void) {
-  if (bound_value) {
-    return true;
+bool EvaluatedTerm::is_bound(void) { return (bool)this->bound_value; }
+
+EvaluatedAtom::EvaluatedAtom(std::string &pred,
+                             std::vector<EvaluatedTerm> &terms)
+    : predicate(pred), terms(terms) {
+  ;
+}
+EvaluatedAtom::EvaluatedAtom(Atom &inner) : predicate(inner.get_predicate()) {
+  for (Term t : inner.get_terms()) {
+    terms.push_back(EvaluatedTerm(t));
+  }
+}
+EvaluatedAtom::EvaluatedAtom(void) : predicate("") {
+  terms = std::vector<EvaluatedTerm>();
+}
+bool EvaluatedAtom::is_ground(void) {
+  for (EvaluatedTerm term : terms) {
+    if (!term.is_bound() ||
+        term.get_bound()->get_term_type() == TermType::VARIABLE) {
+      return false;
+    }
+  }
+  return true;
+}
+void EvaluatedAtom::add_term(EvaluatedTerm &t) { terms.push_back(t); }
+
+void EvaluatedAtom::remove_term(EvaluatedTerm &t) {
+  std::remove_if(terms.begin(), terms.end(),
+                 [&t](EvaluatedTerm &term) { return term == t; });
+}
+
+std::vector<EvaluatedTerm> &EvaluatedAtom::get_eterms(void) { return terms; }
+
+constexpr std::string_view EvaluatedAtom::get_predicate(void) {
+  return predicate;
+}
+
+bool EvaluatedTerm::operator==(EvaluatedTerm &other) {
+  if (this->bound_value && other.is_bound()) {
+    Term t1 = *bound_value;
+    Term t2 = other.get_bound();
+    return t1.get_term_type() == t2.get_term_type() &&
+           t1.get_name() == t2.get_name();
   }
   return false;
 }
+
+/* *Real* intepreter */
 
 bool can_unify(Term &r_term, Term &q_term) {
   if (r_term.get_name() == q_term.get_name()) {
@@ -42,40 +86,66 @@ bool can_unify(Term &r_term, Term &q_term) {
   return true;
 }
 
-void unify(EvaluatedTerm &var_term, EvaluatedTerm &const_term) {
+bool unify(EvaluatedTerm &var_term, EvaluatedTerm &const_term) {
   Term *var_t = var_term.get_bound();
   Term *const_t = const_term.get_bound();
-  if (var_t->get_term_type() == TermType::CONSTANT) {
-    unify(const_term, var_term);
+  // Always have the possibly variable term as the first arg
+  if (var_t->get_term_type() == TermType::CONSTANT &&
+      const_t->get_term_type() == TermType::VARIABLE) {
+    return unify(const_term, var_term);
   } else {
-    var_term.set_binding(const_t);
+    return var_term.set_binding(const_t);
   }
+}
+
+bool unify_atom(EvaluatedAtom &goal, EvaluatedAtom &query) {
+  std::vector<EvaluatedTerm> h_terms = goal.get_eterms();
+  std::vector<EvaluatedTerm> q_terms = query.get_eterms();
+  if (goal.get_predicate() == goal.get_predicate() &&
+      h_terms.size() == q_terms.size()) {
+    bool hasMismatch = false;
+    size_t i = 0;
+    while (!hasMismatch && i < q_terms.size()) {
+      Term h_t = h_terms[i].get_bound();
+      Term q_t = q_terms[i].get_bound();
+      if (can_unify(h_t, q_t)) {
+        // unify
+        EvaluatedTerm h_eterm(h_terms[i]);
+        EvaluatedTerm q_eterm(q_terms[i]);
+        // a term cannot be unified -> fail
+        if (unify(h_eterm, q_eterm)) {
+          goal.add_term(h_eterm);
+        } else {
+          hasMismatch = true;
+          goal.remove_term(h_eterm);
+        }
+      } else {
+        hasMismatch = true;
+      }
+      ++i;
+    }
+    return !hasMismatch;
+  }
+  return false;
 }
 
 void Interpreter::interpret(Program &program, Program &query) {
   Rule q_rule = query.get_rules()[0];
-  Atom q_head = q_rule.get_head();
-  std::vector<Term> q_terms = q_head.get_terms();
   std::vector<Rule> rules = program.get_rules();
+  AstPrinter printer;
 
   for (auto rule : rules) {
-    Atom head = rule.get_head();
     // try to match the head of the rule with the query's one
-    std::vector<Term> h_terms = head.get_terms();
-    if (head.get_predicate() == q_head.get_predicate() &&
-        h_terms.size() == q_terms.size()) {
-      bool hasMismatch = false;
-      size_t i = 0;
-      while (!hasMismatch && i < q_terms.size()) {
-        if (can_unify(h_terms[i], q_terms[i])) {
-          // unify
-          EvaluatedTerm h_eterm(h_terms[i]);
-          EvaluatedTerm q_eterm(q_terms[i]);
-          unify(h_eterm, q_eterm);
-        } else {
-          hasMismatch = true;
-        }
-        ++i;
+    Atom head = rule.get_head();
+    Atom q_heda = q_rule.get_head();
+    EvaluatedAtom ehead = EvaluatedAtom();
+    EvaluatedAtom q_ehead = EvaluatedAtom();
+    if (unify_atom(ehead, q_ehead)) {
+      std::cout << "Unified heads:\n"
+                << "Head: " << printer.visit(rule)
+                << "Query: " << printer.visit(query);
+      // then unify the goals
+      for (auto goal : rule.get_goals()) {
       }
     }
   }
