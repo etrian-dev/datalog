@@ -14,7 +14,8 @@ private:
 public:
   FilePos(const size_t &line, const size_t &column,
           const std::streamoff &offset)
-      : line(line), col(column), offset(offset) {}
+    : line(line), col(column), offset(offset) {
+  }
   friend std::ostream &operator<<(std::ostream &stream, const FilePos &fpos);
   std::string to_string(void) const;
 };
@@ -22,6 +23,7 @@ public:
 enum State { GOOD, ERROR };
 
 // TODO: implement comment tokens (and discard them)
+
 enum TokenType {
   END_OF_FILE,
   LITERAL,

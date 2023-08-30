@@ -10,7 +10,7 @@
 
 /* Parser grammar
 <program> ::= <fact> <program> | <rule> <program> | ɛ
-<fact> ::=  <relation> "(" <constant-list> ")."
+<fact> ::=  <relation> "(" <constant-list> "). | halt."
 <rule> ::= <atom> ":-" <atom-list> "."
 <atom> ::= <relation> "(" <term-list> ")"
 <atom-list> ::= <atom> | <atom> "," <atom-list>
@@ -34,7 +34,8 @@ enum class TermType { CONSTANT, VARIABLE };
 
 // ABC for AST grammar nodes
 class AstNode {
-  template <class T> T accept(AstVisitor<T> &visitor);
+  template <class T>
+  T accept(AstVisitor<T> &visitor);
 };
 
 class Term : AstNode {
@@ -44,11 +45,12 @@ private:
 
 public:
   Term(std::string &name, TermType type);
-  Term(Term *term);
   std::string get_name(void);
   TermType get_term_type(void);
+  bool operator==(Term &other);
 
-  template <class T> T accept(AstVisitor<T> &visitor) {
+  template <class T>
+  T accept(AstVisitor<T> &visitor) {
     return visitor.visit(*this);
   }
 };
@@ -64,7 +66,8 @@ public:
   std::string get_predicate(void);
   std::vector<Term> get_terms(void);
 
-  template <class T> T accept(AstVisitor<T> &visitor) {
+  template <class T>
+  T accept(AstVisitor<T> &visitor) {
     return visitor.visit(*this);
   }
 };
@@ -80,7 +83,8 @@ public:
   Atom get_head(void);
   std::vector<Atom> get_goals(void);
 
-  template <class T> T accept(AstVisitor<T> &visitor) {
+  template <class T>
+  T accept(AstVisitor<T> &visitor) {
     return visitor.visit(*this);
   }
 };
@@ -93,8 +97,10 @@ public:
   Program(void);
   Program(std::vector<Rule> &rules);
   std::vector<Rule> get_rules(void);
+  void add_rule(Rule &rule);
 
-  template <class T> T accept(AstVisitor<T> &visitor) {
+  template <class T>
+  T accept(AstVisitor<T> &visitor) {
     return visitor.visit(*this);
   }
 };
