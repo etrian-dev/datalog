@@ -8,6 +8,17 @@
 #include <string>
 #include <vector>
 
+/* Helpers */
+template <typename T>
+void
+print_unification(std::ostream &stream, T &target, T &query, bool successful) {
+  AstPrinter printer;
+  stream << "Unification "
+         << (successful ? "\033[32msucceeded\033[0m" : "\033[31mfailed\033[0m")
+         << ": " << printer.visit(target) << " and " << printer.visit(query)
+         << "\n";
+}
+
 /* *Real* intepreter */
 
 bool
@@ -23,11 +34,11 @@ can_unify(EvaluatedTerm &r_term, EvaluatedTerm &q_term) {
 }
 
 bool
-unify(EvaluatedTerm &t1, EvaluatedTerm &t2) {
+unify_term(EvaluatedTerm &t1, EvaluatedTerm &t2) {
   // Always have the possibly variable term as the first arg
   if (t1.get_term_type() == TermType::CONSTANT
       && t2.get_term_type() == TermType::VARIABLE) {
-    return unify(t2, t1);
+    return unify_term(t2, t1);
   }
   else if (t1.get_term_type() == TermType::CONSTANT) {
     // both are constant
@@ -35,36 +46,28 @@ unify(EvaluatedTerm &t1, EvaluatedTerm &t2) {
   }
   else {
     // bind the var with the term in t2
-    Term *const_t = t2.get_bound();
-    return t1.set_binding(const_t);
+    std::string s = t2.get_name();
+    return t1.set_binding(s);
   }
 }
 
 bool
 unify_atom(EvaluatedAtom &goal, EvaluatedAtom &query) {
-  std::vector<EvaluatedTerm> h_terms = goal.get_eterms();
-  std::vector<EvaluatedTerm> q_terms = query.get_eterms();
-  if (goal.get_predicate() == goal.get_predicate()
-      && h_terms.size() == q_terms.size()) {
+  size_t q_nterms = query.get_eterms().size();
+  if (goal.get_predicate() == query.get_predicate()
+      && goal.get_eterms().size() == q_nterms) {
     bool hasMismatch = false;
     size_t i = 0;
-    while (!hasMismatch && i < q_terms.size()) {
-      if (can_unify(h_terms[i], q_terms[i])) {
-        // unify
-        EvaluatedTerm h_eterm(h_terms[i]);
-        EvaluatedTerm q_eterm(q_terms[i]);
-        // a term cannot be unified -> fail
-        if (unify(h_eterm, q_eterm)) {
-          query.add_term(h_eterm);
-        }
-        else {
-          hasMismatch = true;
-          query.reset();
-        }
-      }
-      else {
+    while (!hasMismatch && i < q_nterms) {
+      // a term cannot be unified -> fail
+      if (!unify_term(goal.get_term(i), query.get_term(i))) {
+        print_unification(std::cerr, goal.get_term(i), query.get_term(i),
+                          false);
         query.reset();
         hasMismatch = true;
+      }
+      else {
+        print_unification(std::cerr, goal.get_term(i), query.get_term(i), true);
       }
       ++i;
     }
@@ -83,14 +86,10 @@ unify_rule(Program &program, EvaluatedRule &q_rule) {
     EvaluatedAtom ehead = EvaluatedAtom(head);
     EvaluatedAtom q_ehead = q_rule.get_ehead();
     if (!unify_atom(ehead, q_ehead)) {
-      std::cout << "Failed to unify heads"
-                << "\nHead: " << printer.visit(ehead)
-                << "\nQuery: " << printer.visit(q_ehead);
+      print_unification(std::cerr, ehead, q_ehead, false);
       continue;
     }
-    std::cout << "Heads can be unified:"
-              << "\nHead: " << printer.visit(ehead)
-              << "\nQuery: " << printer.visit(q_ehead);
+    print_unification(std::cout, ehead, q_ehead, true);
     // then unify the goals
     for (auto goal : rule.get_goals()) {
       // Non-unified goal
@@ -107,8 +106,8 @@ unify_rule(Program &program, EvaluatedRule &q_rule) {
                          });
         if (eterm_opt != std::end(eterms)) {
           // Copy the bindind from the head to the goal
-          Term *t = eterm_opt->get_bound();
-          goal_eterm.set_binding(t);
+          std::string name = eterm_opt->get_bound();
+          goal_eterm.set_binding(name);
         }
       }
       std::cout << "(Partially) bound goal:" << printer.visit(egoal) << "\n";

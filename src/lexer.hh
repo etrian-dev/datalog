@@ -56,10 +56,12 @@ private:
   State state;
   std::vector<Token> tokens;
   std::vector<Token> runLexer(std::istream &stream);
+  void reset(void);
 
 public:
   Lexer(std::string &ifile);
   ~Lexer();
+  void set_stream(std::ifstream &new_stream);
   std::vector<Token> run(void);
   std::vector<Token> run(std::string &query);
 };

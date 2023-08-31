@@ -17,7 +17,7 @@ main(int argc, char **argv) {
   }
   // read input file(s)
   std::string ifile(argv[1]);
-  Lexer lexer(ifile);
+  Lexer lexer = Lexer(ifile);
   std::vector<Token> tokens = lexer.run();
   print_tokens(std::cout, tokens);
   Parser parser(tokens);

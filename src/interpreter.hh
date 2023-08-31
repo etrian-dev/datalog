@@ -11,13 +11,13 @@ const std::string_view HALT_COMMAND = "halt";
 
 class EvaluatedTerm : public Term {
 private:
-  std::shared_ptr<Term> bound_value;
+  std::string bound_value;
 
 public:
-  EvaluatedTerm(Term &t);
-  bool set_binding(Term *t);
+  EvaluatedTerm(std::string pred, TermType tt);
+  bool set_binding(std::string &name);
   void reset_binding(void);
-  Term *get_bound(void);
+  std::string get_bound(void);
   bool is_bound(void);
   bool operator==(EvaluatedTerm &other);
 
@@ -38,9 +38,10 @@ public:
   EvaluatedAtom(Atom &atom);
   EvaluatedAtom(std::string &pred);
   bool is_ground(void);
-  void add_term(EvaluatedTerm &t);
+  void update_term(EvaluatedTerm &t);
   void remove_term(EvaluatedTerm &t);
   void reset(void);
+  EvaluatedTerm &get_term(size_t idx);
   std::vector<EvaluatedTerm> get_eterms(void);
   std::string get_predicate(void);
 

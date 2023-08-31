@@ -21,7 +21,6 @@ operator<<(std::ostream &stream, const FilePos &fpos) {
 Token::
 Token(const TokenType tt, const std::string &lexeme, const FilePos &pos)
   : type(tt), lexeme(lexeme), file_pos(pos) {
-  ;
 }
 
 std::ostream &
@@ -83,6 +82,22 @@ Lexer() {
   if (istream.is_open()) {
     istream.close();
   }
+}
+
+void
+Lexer::set_stream(std::ifstream &new_stream) {
+  reset();
+  istream = std::move(new_stream);
+}
+
+void
+Lexer::reset(void) {
+  if (istream.is_open()) {
+    istream.close();
+  }
+  istream.clear();
+  state = State::GOOD;
+  tokens.clear();
 }
 
 State
