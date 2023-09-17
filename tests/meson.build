@@ -3,13 +3,13 @@ includes = include_directories('../src')
 datalog_test = executable(
   'datalog_test',
   'test.cpp',
-  include_directories: includes, link_with:datalogpp, dependencies: snitch_dep)
+  include_directories: includes, link_with:datalogpp, dependencies: snitch)
 
 # Unit test
 ut0 = executable(
   'ut0',
   'ut0.cpp',
-  include_directories: includes, link_with: datalogpp, dependencies: snitch_dep,
+  include_directories: includes, link_with: datalogpp, dependencies: snitch,
   override_options: ['cpp_std=c++20'])
 test('ut0', ut0)
 

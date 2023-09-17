@@ -1,6 +1,11 @@
 project('datalog', 'cpp')
 
-snitch_dep = dependency('snitch')
+snitch = dependency('snitch')
+deps = [snitch]
+
+doxygen = find_program('doxygen')
+doxyfile = join_paths('@SOURCE_ROOT@','Doxyfile')
+run_target('doxygen', command: [doxygen, doxyfile])
 
 datalogpp = library(
   'datalogpp',

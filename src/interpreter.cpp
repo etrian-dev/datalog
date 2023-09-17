@@ -1,3 +1,9 @@
+/**
+ * @file interpreter.cpp
+ *
+ * Implementation of the datalog interpreter
+ */
+
 #include "interpreter.hh"
 #include "ast.hh"
 #include "parser.hh"
@@ -19,6 +25,18 @@ print_unification(std::ostream &stream, T &target, T &query, bool successful) {
          << "\n";
 }
 
+void
+print_binding_chain(std::ostream &stream, EvaluatedTerm &term) {
+  AstPrinter printer;
+  stream << "Binding chain for term:\n";
+  EvaluatedTerm t = term;
+  while (t.is_bound()) {
+    stream << printer.visit(t) << " -> ";
+    t = *t.get_bound();
+  }
+  stream << printer.visit(t) << "\n";
+}
+
 /* *Real* intepreter */
 
 bool
@@ -33,6 +51,12 @@ can_unify(EvaluatedTerm &r_term, EvaluatedTerm &q_term) {
   return true;
 }
 
+/**
+ * @brief Unify term t1 with term t2
+ * @param t1 (possibly) bound term to be unified
+ * @param t2 unbound term to be unified
+ * @returns true iff at least one unification can be found
+ */
 bool
 unify_term(EvaluatedTerm &t1, EvaluatedTerm &t2) {
   // Always have the possibly variable term as the first arg
@@ -44,13 +68,54 @@ unify_term(EvaluatedTerm &t1, EvaluatedTerm &t2) {
     // both are constant
     return t1.get_name() == t2.get_name();
   }
+  // check whether the value t1 is the same as t2
+  else if (t1.is_bound()) {
+    // for each bound term in t2's binding chains, search for that term in t1's
+    // chain
+    //
+    // [P/t1] -> [C/P] -----
+    //                     |
+    //                     v
+    // [A/t2] -> [B/A] -> [C/B] -> [D/C] -> [cnst/D]
+    //
+    bool found = false;
+    EvaluatedTerm t2_chain = t2;
+    // till the chain of bound terms for t2 bottoms out, try to find a matching
+    // term in the chain for t1
+    while (t2_chain.get_term_type() != TermType::CONSTANT) {
+      EvaluatedTerm bound_t1 = t1;
+      while (bound_t1.is_bound()) {
+        bound_t1 = *bound_t1.get_bound();
+        if (bound_t1 == t2_chain) {
+          found = true;
+        }
+      }
+      if (bound_t1 == t2_chain) {
+        found = true;
+      }
+      // The chain for t2 ends in an unbounded variable
+      if (!t2_chain.is_bound()
+          && t2_chain.get_term_type() == TermType::VARIABLE) {
+        break;
+      }
+      // otherwise advance t2's chain
+      t2_chain = *t2_chain.get_bound();
+    }
+    return found;
+  }
   else {
     // bind the var with the term in t2
-    std::string s = t2.get_name();
-    return t1.set_binding(s);
+    return t1.set_binding(&t2);
   }
 }
 
+/**
+ * @brief Unify atom goal with atom query, by exaustively
+ * finding all possible bindings, if any.
+ * @param goal The goal to be unified
+ * @param query The search query to be unified
+ * @returns true iff at least one unification can be found
+ */
 bool
 unify_atom(EvaluatedAtom &goal, EvaluatedAtom &query) {
   size_t q_nterms = query.get_eterms().size();
@@ -106,8 +171,7 @@ unify_rule(Program &program, EvaluatedRule &q_rule) {
                          });
         if (eterm_opt != std::end(eterms)) {
           // Copy the bindind from the head to the goal
-          std::string name = eterm_opt->get_bound();
-          goal_eterm.set_binding(name);
+          goal_eterm.set_binding(eterm_opt->get_bound());
         }
       }
       std::cout << "(Partially) bound goal:" << printer.visit(egoal) << "\n";

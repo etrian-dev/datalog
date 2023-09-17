@@ -10,13 +10,16 @@
 
 EvaluatedTerm::
 EvaluatedTerm(std::string pred, TermType tt)
-  : Term(pred, tt) {
+  : Term(pred, tt), bound_value(nullptr) {
 }
 
 bool
-EvaluatedTerm::set_binding(std::string &name) {
-  if (bound_value.empty()) {
-    bound_value = std::string(name);
+EvaluatedTerm::set_binding(EvaluatedTerm *other) {
+  if (bound_value == nullptr) {
+    bound_value = other;
+    return true;
+  }
+  else if (bound_value->get_name() == other->get_name()) {
     return true;
   }
   return false;
@@ -24,27 +27,36 @@ EvaluatedTerm::set_binding(std::string &name) {
 
 void
 EvaluatedTerm::reset_binding(void) {
-  bound_value.clear();
+  bound_value = nullptr;
 }
 
-std::string
+EvaluatedTerm *
 EvaluatedTerm::get_bound(void) {
-  if (!bound_value.empty()) {
-    return std::string(bound_value);
+  if (bound_value) {
+    return bound_value;
   }
-  throw std::runtime_error("No value is bound!");
+  return nullptr;
 }
 
 bool
 EvaluatedTerm::is_bound(void) {
-  return !bound_value.empty();
+  return (bound_value != nullptr);
 }
 
 bool
 EvaluatedTerm::operator==(EvaluatedTerm &other) {
   if (Term::operator==(other)) {
-    return ((!bound_value.empty() && other.is_bound())
-            || (!bound_value.empty() && !other.is_bound()));
+    if (!bound_value && !other.is_bound()) {
+      return true;
+    }
+    if (bound_value && other.is_bound()) {
+      return *bound_value == *other.get_bound();
+    }
   }
   return false;
+}
+
+bool
+EvaluatedTerm::operator!=(EvaluatedTerm &other) {
+  return !(*this == other);
 }

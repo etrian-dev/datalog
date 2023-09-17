@@ -29,7 +29,8 @@ template <>
 std::string
 AstPrinter::visit(EvaluatedTerm &eterm) {
   if (eterm.is_bound()) {
-    return "[" + eterm.get_bound() + "/" + eterm.get_name() + "]:var";
+    return "[" + eterm.get_bound()->get_name() + "/" + eterm.get_name()
+           + "]:var";
   }
   else {
     return eterm.get_name() + ":"

@@ -9,17 +9,28 @@
 
 const std::string_view HALT_COMMAND = "halt";
 
+/**
+ * @brief Partially evaluated term.
+ * It can either be bound to some other term or be a constant.
+ */
 class EvaluatedTerm : public Term {
 private:
-  std::string bound_value;
+  /**
+   * Possibly null term predicate this term is bound to
+   */
+  EvaluatedTerm *bound_value;
 
 public:
+  /**
+   * @brief Construct a new unbound term given a predicate and a \ref TermType
+   */
   EvaluatedTerm(std::string pred, TermType tt);
-  bool set_binding(std::string &name);
+  bool set_binding(EvaluatedTerm *other);
   void reset_binding(void);
-  std::string get_bound(void);
+  EvaluatedTerm *get_bound(void);
   bool is_bound(void);
   bool operator==(EvaluatedTerm &other);
+  bool operator!=(EvaluatedTerm &other);
 
   template <class T>
   T accept(AstVisitor<T> &visitor) {
